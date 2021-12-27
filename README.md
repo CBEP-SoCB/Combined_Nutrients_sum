@@ -5,11 +5,9 @@
     style="position:absolute;top:10px;right:50px;" />
     
 # Introduction
-This repository was created  to compare nutrient data received from Friends 
-of Casco Bay and from Maine DEP.  Initially, this was only to ensure that we
-were not double counting nutrient samples.  When we discovered that there was
-no sample overlap between the two data sources, we extended the archive to 
-combine data from both sources for graphical display purposes.
+This repository was created  to prepare graphics that combine information on
+nutrients in Casco Bay from both Maine DEP and FOCB data. We combine data from 
+both sources for graphical display purposes.
 
 We do not conduct detailed statistical analyses of differences between sites in
 this repository, as data comes from two sources with different histories,
@@ -44,10 +42,6 @@ to four sub-folders.
 
 - Data. Contains working data on which R code in other folders depend. Often
 these data are derived from source data not provided here.
-
-- Analysis.  Contains one or more R Notebooks proceeding through the data
-analysis steps. This often includes both exploratory data analysis --
-principally graphical -- and detailed modeling where necessary.
 
 - Graphics.  Contains R Notebooks stepping through development of graphics, and
 also copies of resulting graphics, usually in \*.png and \*.pdf formats.  These
