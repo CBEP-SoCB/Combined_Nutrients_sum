@@ -1,0 +1,67 @@
+---
+title: "Check Location Data"
+output: html_notebook
+---
+
+# Load Libraries
+```{r libraries}
+library(tidyverse)
+
+# library(CBEPgraphics)
+# load_cbep_fonts()
+# theme_set(theme_cbep())
+```
+
+# Folder References
+```{r folder_refs}
+sibfldnm <- 'Derived_Data'
+parent <- dirname(getwd())
+sibling <- file.path(parent,sibfldnm)
+
+dir.create(file.path(getwd(), 'figures'), showWarnings = FALSE)
+```
+
+# Load Locations
+```{r}
+fn <- 'combined_locations.csv'
+
+locations <- read_csv(file.path(sibling, fn)) %>%
+  mutate(source = factor(source), 
+         site = factor(site))
+```
+
+# Search for Duplicates
+```{r}
+locations %>%
+  select(site, latitude, longitude) %>%
+  mutate(dup_lat = duplicated(latitude),
+         dup_long = duplicated(longitude),
+         dup = dup_lat & dup_long) %>%
+  filter(dup) %>%
+  select(-contains('dup'))
+  
+```
+So we have both RR00 and RR00A in the list of sites.  Lets see if that matters.
+We look at the actual data we are using and examine whether both of those sites
+actually appear.
+
+# Load Actual Data
+```{r}
+fn <- 'combined_surface_data.csv'
+
+surface_data <- read_csv(file.path(sibling, fn )) %>%
+  mutate(source = factor(source), 
+         site = factor(site),
+         month = factor(month, levels = month.abb),
+         parameter = factor(parameter))
+```
+
+# Look For Use of Duplicate Locations
+```{r}
+surface_data %>% 
+  select(site) %>%
+  filter(grepl('RR00', site)) %>%
+  unique
+```
+
+So that duplicate site code does not matter for our purposes here.

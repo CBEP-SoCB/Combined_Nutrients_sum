@@ -1,0 +1,304 @@
+---
+title: "Graphics for DEP and FOCB Nutrient Data"
+author: "Curtis C. Bohlen, Casco Bay Estuary Partnership."
+date: "06/07/2021"
+output:
+  github_document:
+    toc: true
+    fig_width: 5
+    fig_height: 4
+---
+
+<img
+    src="https://www.cascobayestuary.org/wp-content/uploads/2014/04/logo_sm.jpg"
+    style="position:absolute;top:10px;right:50px;" />
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center',
+                      fig.width = 5, fig.height = 4,
+                      collapse = TRUE, comment = "#>")
+```
+
+# Introduction
+This repository was created  to compare nutrient data received from Friends 
+of Casco Bay and from Maine DEP.  initially, this was to to ensure that we are 
+not double counting nutrient samples.  When we discovered that there is little
+or no sample overlap between the two data sources, we extended the archive to 
+combine data from both sources  into one data set for display purposes. 
+
+There is no "Original_Data" folder for this repository.  All data was derived 
+from sources in "DEP_nutrients" and "FOCB_Nutrients" repositories, and copied 
+here.
+
+"DEP_nutrients"   ->  'dep_nutrient_data.csv'
+"FOCB_Nutrients"  ->  'focb_n_data_strict.csv'
+
+In this notebook, we use a simple strategy, using `inner_join()` to check for 
+samples that match with regards to date and site, and examine the TN and NOx 
+data from the two sources to see if they are similar.
+
+We find only four samples where DEP and FOCB sampled the same location on the 
+same dates.  Reported TN and NOx values do not match.  We conclude that these
+are independent data sources.
+
+# Load Libraries
+```{r libraries}
+library(tidyverse)
+
+library(GGally)
+
+library(CBEPgraphics)
+load_cbep_fonts()
+theme_set(theme_cbep())
+```
+
+# Folder References
+```{r folder_refs}
+sibfldnm <- 'Derived_Data'
+parent <- dirname(getwd())
+sibling <- file.path(parent,sibfldnm)
+
+dir.create(file.path(getwd(), 'figures'), showWarnings = FALSE)
+```
+
+# Load Data
+```{r load_data}
+fn <- 'combined_surface_data.csv'
+
+surface_data <- read_csv(file.path(sibling, fn )) %>%
+  mutate(source = factor(source), 
+         site = factor(site),
+         month = factor(month, levels = month.abb),
+         parameter = factor(parameter))
+```
+
+# Remove Questionable Extreme Values
+We remove two extreme values from the FOCB TN data.  While these values were 
+not flagged as errors in the source data, they appear likely to represent errors 
+based on QC review.  Details of teh QA/QC review are in the archve describing
+initial analysis of the FOCB nutrients data.
+```{r clean_data}
+surface_data <- surface_data %>%
+  filter(! (parameter == 'TN' & concentration > 1.5))
+```
+
+# Add Location, Site Names and Regions
+```{r read_goegraphy}
+fn <- 'combined_locations.csv'
+
+locations <- read_csv(file.path(sibling, fn)) %>%
+  mutate(source = factor(source), 
+         site = factor(site)) %>%
+  rename(loc_sources = source)
+```
+
+```{r join_geography}
+surface_data <- surface_data %>%
+  left_join(locations, by = 'site') %>%
+  relocate(site_name, short_name, region, loc_sources, .after = site)
+```
+
+
+# Data Summary
+There are a handful of replicate or near replicate values, or at least samples 
+collected at the same date and site.  Al lare in the FOCB data, and probably only
+represent data nominally collected from different depths (DIN and TN depths were 
+often recorded differently). To address that, we average across all samples
+collected at one site and date by each organization BEFORE we calculate
+descriptive statistics.
+```{r calc_results}
+surface_results <- surface_data %>%
+  relocate(latitude, longitude, .after = region) %>%
+  pivot_wider(id_cols = source:doy, 
+              names_from = parameter, 
+              values_from = concentration,
+              values_fn = function(x) mean(x, na.rm = TRUE)) %>%
+  group_by(site, short_name, region, loc_sources, latitude, longitude) %>%
+  summarize(across(.cols = c(DIN, TN),
+                   .fns = c(mn = ~ mean(.x, na.rm = TRUE),
+                            sd = ~ sd(.x, na.rm = TRUE), 
+                            n = ~sum(! is.na(.x)),
+                            md = ~ median(.x, na.rm = TRUE),
+                            iqr = ~ IQR(.x, na.rm = TRUE),
+                            p90 = ~ quantile(.x, .9, na.rm = TRUE),
+                            gm = ~ exp(mean(log(.x), na.rm = TRUE)))),
+            .groups = 'drop') %>%
+  mutate(site = fct_reorder(factor(site), TN_md),
+         short_name = fct_reorder(factor(short_name), TN_md),
+         region = factor(region))
+```
+
+## TN Results
+```{r tn_results}
+surface_results %>%
+  select(site, short_name, contains('TN'))
+```
+
+## DIN Results
+```{r din_results}
+surface_results %>%
+  select(site, short_name, contains('DIN'))
+```
+
+# Save Results
+```{r save_results}
+fn <- 'surface_recent_results.csv'
+write_csv(surface_results, file.path(sibling, fn))
+```
+
+# Graphics
+## TN  Graphic by TN
+### Order Sites in Rank Order of TN
+```{r order_by_tn}
+surface_data <- surface_data %>%
+mutate(site = factor(site, levels = levels(surface_results$site)),
+       short_name = factor(short_name, 
+                           levels = levels(surface_results$short_name)))
+```
+
+### Create Base Plot
+```{r create_base_plot}
+plt <- surface_data %>%
+  filter(parameter == 'TN') %>%
+  ggplot(aes(concentration, short_name)) +
+  
+  geom_point(aes(fill = region), shape = 21, size = 2) +
+  #stat_summary(geom = 'point', fun = median, shape = 3, size = 2.5) +
+  
+  scale_fill_brewer(palette = 'Accent', name = '') +
+  
+  ylab('') +
+  xlab('Total Nitrogen (mg/l)') +
+  theme_cbep(base_size = 12) +
+  theme(legend.position = c(.80, .25),
+        legend.text = element_text(size = 9),
+        legend.key.height = unit(5, 'pt'),
+        plot.margin  = unit(c(8,24,8,8), 'pt'),
+        plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r tn_graphic_by_tn, fig.height = 6, fig.width = 6}
+plt + 
+  geom_vline(xintercept = 0.32, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.35, y = 1, label = '0.32'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3]) +
+  geom_vline(xintercept = 0.45, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.48, y = 1, label = '0.45'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3]) +
+  labs(title = 'DEP and FOCB Data\n2015-2019')
+
+ggsave('figures/tn_by_site_by_tn.pdf', device = cairo_pdf, width = 6, height = 6)
+```
+
+```{r tn_graphic_by_tn_no_labels, fig.height = 5, fig.width = 4}
+plt +
+  
+  ylab('Sample Location') +
+  
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.line = element_line(color = 'gray85'))  +
+  
+  geom_vline(xintercept = 0.32, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.35, y = 1, label = '0.32'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3]) +
+  geom_vline(xintercept = 0.45, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.48, y = 1, label = '0.45'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3]) +
+  labs(title = 'DEP and FOCB Data\n2015-2019')
+
+ggsave('figures/tn_by_site_by_tn_no_labels.pdf', device = cairo_pdf, 
+       width = 4, height = 5)
+```
+
+## TN Graphic By Region
+### Order Sites in Region
+We order Regions by Median TN value, then order sites within regions by the 
+same.  Note that to get the final ordering the way we want on the graphic, we 
+SUBTRACT the median TN value.
+```{r site_order}
+surface_results <- surface_results %>%
+  mutate(region = fct_reorder(region, TN_md, na.rm = TRUE, .desc = TRUE),
+         site = fct_reorder2(site, region, TN_md, 
+                             function(x,y) as.numeric(x) * 100 - y),
+         short_name = fct_reorder2(short_name, region, TN_md, 
+                             function(x,y) as.numeric(x) * 100 - y))
+surface_data <- surface_data %>%
+  mutate(region = factor(region, levels = levels(surface_results$region)),
+         site = factor(site, levels = levels(surface_results$site)),
+         short_name = factor(short_name, levels = levels(surface_results$short_name)))
+```
+
+```{r region_graphic_setup, fig.height = 5, fig.width = 4}
+plt <- surface_data %>%
+  filter(parameter == 'TN') %>%
+  ggplot(aes(concentration, short_name)) +
+
+  geom_point(aes(fill = region), shape = 21, size = 2) +
+  #stat_summary(geom = 'point', fun = median, shape = 3, size = 2.5) +
+  
+  scale_fill_brewer(palette = 'Accent', name = '') +
+  
+  ylab('Sample Location') +
+  xlab('Total Nitrogen (mg/l)') +
+  
+  theme_cbep(base_size = 12) +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.line = element_line(color = 'gray85'),
+        legend.position = c(.80, .25),
+        legend.text = element_text(size = 9),
+        legend.key.height = unit(5, 'pt'),
+        plot.margin  = unit(c(8,24,8,8), 'pt'),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = 'DEP and FOCB Data\n2015-2019') +
+
+  geom_vline(xintercept = 0.32, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.35, y = 15, label = '0.32'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3]) +
+  geom_vline(xintercept = 0.45, color = cbep_colors()[3], lty = 2) +
+  geom_text(aes(x = 0.48, y = 15, label = '0.45'), 
+            angle = 90, hjust = 0, size = 3,
+                color = cbep_colors()[3])
+```
+
+```{r tn_graphic_region_legend, fig.height = 5, fig.width = 4}
+plt
+
+ggsave('figures/tn_by_site_by_region_no_labels.pdf', device = cairo_pdf, 
+       width = 4, height = 5)
+```
+
+## With Labels, Not Legend
+### Calculate Y Coordinates
+We want to place labels in the "middle" of the list of entries that correspond
+to each region.  So, we want to identify median row position for each group.
+```{r calc_txt_positions}
+n_sites <- length(levels(surface_results$site))
+lab_positions <- surface_results %>%
+  group_by(region) %>%
+  summarize(y_pos = median(as.numeric(site)), .groups = 'drop') %>%
+  mutate(x_pos = .825)
+```
+
+### Add Labels
+```{r tn_graphic_region_no_legend, fig.height = 5, fig.width = 4}
+plt +
+  
+  theme(legend.position = 'none',
+        #plot.margin  = unit(c(8,24,8,8), 'pt')
+        ) +
+  geom_text(data = lab_positions, 
+            mapping = aes(x = x_pos, y = y_pos, label = region),
+            hjust = 0, size = 3)
+
+ggsave('figures/tn_by_site_by_region_final.pdf', device = cairo_pdf, 
+       width = 4, height = 5)
+```
+
