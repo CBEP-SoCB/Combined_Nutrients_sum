@@ -21,25 +21,10 @@ knitr::opts_chunk$set(fig.align = 'center',
 
 # Introduction
 This repository was created  to compare nutrient data received from Friends 
-of Casco Bay and from Maine DEP.  initially, this was to to ensure that we are 
+of Casco Bay and from Maine DEP.  Initially, this was to to ensure that we are 
 not double counting nutrient samples.  When we discovered that there is little
 or no sample overlap between the two data sources, we extended the archive to 
-combine data from both sources  into one data set for display purposes. 
-
-There is no "Original_Data" folder for this repository.  All data was derived 
-from sources in "DEP_nutrients" and "FOCB_Nutrients" repositories, and copied 
-here.
-
-"DEP_nutrients"   ->  'dep_nutrient_data.csv'
-"FOCB_Nutrients"  ->  'focb_n_data_strict.csv'
-
-In this notebook, we use a simple strategy, using `inner_join()` to check for 
-samples that match with regards to date and site, and examine the TN and NOx 
-data from the two sources to see if they are similar.
-
-We find only four samples where DEP and FOCB sampled the same location on the 
-same dates.  Reported TN and NOx values do not match.  We conclude that these
-are independent data sources.
+combine data from both sources into one data set for display purposes. 
 
 # Load Libraries
 ```{r libraries}
@@ -54,7 +39,7 @@ theme_set(theme_cbep())
 
 # Folder References
 ```{r folder_refs}
-sibfldnm <- 'Derived_Data'
+sibfldnm <- 'Data'
 parent <- dirname(getwd())
 sibling <- file.path(parent,sibfldnm)
 
@@ -101,7 +86,7 @@ surface_data <- surface_data %>%
 
 # Data Summary
 There are a handful of replicate or near replicate values, or at least samples 
-collected at the same date and site.  Al lare in the FOCB data, and probably only
+collected at the same date and site.  All are in the FOCB data, and probably only
 represent data nominally collected from different depths (DIN and TN depths were 
 often recorded differently). To address that, we average across all samples
 collected at one site and date by each organization BEFORE we calculate
@@ -128,26 +113,8 @@ surface_results <- surface_data %>%
          region = factor(region))
 ```
 
-## TN Results
-```{r tn_results}
-surface_results %>%
-  select(site, short_name, contains('TN'))
-```
-
-## DIN Results
-```{r din_results}
-surface_results %>%
-  select(site, short_name, contains('DIN'))
-```
-
-# Save Results
-```{r save_results}
-fn <- 'surface_recent_results.csv'
-write_csv(surface_results, file.path(sibling, fn))
-```
-
 # Graphics
-## TN  Graphic by TN
+## TN Graphic by TN
 ### Order Sites in Rank Order of TN
 ```{r order_by_tn}
 surface_data <- surface_data %>%
@@ -176,7 +143,6 @@ plt <- surface_data %>%
         plot.margin  = unit(c(8,24,8,8), 'pt'),
         plot.title = element_text(hjust = 0.5))
 ```
-
 
 ```{r tn_graphic_by_tn, fig.height = 6, fig.width = 6}
 plt + 

@@ -42,24 +42,12 @@ review, critique, learn from, and build upon CBEP science.
 CBEP 2020 State of the Bay data analysis repositories are divided into from two
 to four sub-folders.
 
-- Original Data.  Original data, with a "DATA_SOURCES.md" or "READ ME.txt" file 
-that documents data sources.
-**DATA IN THIS FOLDER IS AS ORIGINALLY PROVIDED OR ACCESSED.** 
-
-> There is no "Original_Data" folder for this repository.  All data was derived 
-  from sources described in two source data repositories ("DEP_nutrients" and 
-  "FOCB_Nutrients"). Visit those repositories for data sources and details of
-  initial data review and preparation.
-
-- Derived Data.  Data derived from the original raw data.  Includes
-documentation of data reorganization steps, either in the form of files (R
-notebooks, Excel files, etc.) that embody data transformations, or via README.md
-or DATA_NOTES.md files.  Code describing data review and QA/QC are often 
-included here as well.
+- Data. Contains working data on which R code in other folders depend. Often
+these data are derived from source data not provided here.
 
 - Analysis.  Contains one or more R Notebooks proceeding through the data
 analysis steps. This often includes both exploratory data analysis --
-principally graphical -- and detailed analysis where necessary.
+principally graphical -- and detailed modeling where necessary.
 
 - Graphics.  Contains R Notebooks stepping through development of graphics, and
 also copies of resulting graphics, usually in \*.png and \*.pdf formats.  These
@@ -68,10 +56,11 @@ graphical layouts.
 
 # Summary of Data Sources
 Data presented here were shared with CBEP by Friends of Casco Bay and
-Maine's Department of Environmental Protection, via e-mail.  Details of
-sources and when files were received, reviewed, and corrected are included in
-the data repositories where the main source data files were developed, as 
-follows:
+Maine's Department of Environmental Protection, via e-mail. More information is
+available at related summary GitHub repositories.
+[DEP_nutrients_sum repository](https://github.com/CBEP-SoCB/DEP_Nutrients.git) and the
+[FOCB_Nutrients_sum repository](https://github.com/CBEP-SoCB/FOCB_Nutrients.git)
 
-"DEP_nutrients"   ->  'dep_nutrient_data.csv'
-"FOCB_Nutrients"  ->  'focb_n_data_strict.csv'
+Data ultimately derives from raw data and data management scripts available in
+related archives found [here](https://github.com/CBEP-SoCB-Details). Those files
+include details of sources and how files were received, reviewed, and corrected.
